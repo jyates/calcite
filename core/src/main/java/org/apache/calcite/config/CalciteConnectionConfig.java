@@ -48,6 +48,8 @@ public interface CalciteConnectionConfig extends ConnectionConfig {
   boolean forceDecorrelate();
   /** @see CalciteConnectionProperty#TYPE_SYSTEM */
   <T> T typeSystem(Class<T> typeSystemClass, T defaultTypeSystem);
+  /** @see org.apache.calcite.config.CalciteConnectionProperty#COOPERATIVE_POLICY */
+  String cooperativePolicy();
 }
 
 // End CalciteConnectionConfig.java

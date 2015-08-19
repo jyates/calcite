@@ -185,8 +185,11 @@ public abstract class AvaticaStatement
     try {
       executeInternal(sql);
       if (openResultSet == null) {
-        throw connection.helper.createException(
-            "Statement did not return a result set");
+        String msg = "Statement did not return a result set";
+        if (this.isClosed()) {
+          msg = "Statement closed while loading result set";
+        }
+        throw connection.helper.createException(msg);
       }
       return openResultSet;
     } catch (RuntimeException e) {

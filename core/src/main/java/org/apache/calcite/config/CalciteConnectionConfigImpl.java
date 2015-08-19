@@ -92,6 +92,11 @@ public class CalciteConnectionConfigImpl extends ConnectionConfigImpl
     return CalciteConnectionProperty.TYPE_SYSTEM.wrap(properties)
         .getPlugin(typeSystemClass, defaultTypeSystem);
   }
+
+  @Override
+  public String cooperativePolicy() {
+    return CalciteConnectionProperty.COOPERATIVE_POLICY.wrap(properties).getString();
+  }
 }
 
 // End CalciteConnectionConfigImpl.java

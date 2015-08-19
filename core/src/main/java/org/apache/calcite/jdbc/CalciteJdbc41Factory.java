@@ -26,6 +26,8 @@ import org.apache.calcite.avatica.AvaticaStatement;
 import org.apache.calcite.avatica.Meta;
 import org.apache.calcite.avatica.QueryState;
 import org.apache.calcite.avatica.UnregisteredDriver;
+import org.apache.calcite.jdbc.cooperative.CooperativeIterationPolicy;
+import org.apache.calcite.jdbc.cooperative.CooperativePolicyFactory;
 
 import java.io.InputStream;
 import java.io.Reader;
@@ -53,6 +55,8 @@ public class CalciteJdbc41Factory extends CalciteFactory {
     super(major, minor);
   }
 
+  private CooperativePolicyFactory cooperativePolicyFactory = new CooperativePolicyFactory();
+
   public CalciteJdbc41Connection newConnection(UnregisteredDriver driver,
       AvaticaFactory factory, String url, Properties info,
       CalciteSchema rootSchema, JavaTypeFactory typeFactory) {
@@ -71,11 +75,12 @@ public class CalciteJdbc41Factory extends CalciteFactory {
       int resultSetType,
       int resultSetConcurrency,
       int resultSetHoldability) {
-    return new CalciteJdbc41Statement(
-        (CalciteConnectionImpl) connection,
+    CalciteConnectionImpl conn = (CalciteConnectionImpl) connection;
+    CooperativeIterationPolicy policy = cooperativePolicyFactory.createPolicy(conn);
+    return new CalciteJdbc41Statement(conn,
         h,
         resultSetType, resultSetConcurrency,
-        resultSetHoldability);
+        resultSetHoldability, policy);
   }
 
   public AvaticaPreparedStatement newPreparedStatement(
@@ -85,8 +90,7 @@ public class CalciteJdbc41Factory extends CalciteFactory {
       int resultSetType,
       int resultSetConcurrency,
       int resultSetHoldability) throws SQLException {
-    return new CalciteJdbc41PreparedStatement(
-        (CalciteConnectionImpl) connection, h,
+    return new CalciteJdbc41PreparedStatement((CalciteConnectionImpl) connection, h,
         (CalcitePrepare.CalciteSignature) signature, resultSetType,
         resultSetConcurrency, resultSetHoldability);
   }
@@ -119,9 +123,10 @@ public class CalciteJdbc41Factory extends CalciteFactory {
   private static class CalciteJdbc41Statement extends CalciteStatement {
     public CalciteJdbc41Statement(CalciteConnectionImpl connection,
         Meta.StatementHandle h, int resultSetType, int resultSetConcurrency,
-        int resultSetHoldability) {
+        int resultSetHoldability, CooperativeIterationPolicy policy) {
       super(connection, h, resultSetType, resultSetConcurrency,
-          resultSetHoldability);
+          resultSetHoldability, policy);
+      policy.setStatement(this);
     }
   }
 

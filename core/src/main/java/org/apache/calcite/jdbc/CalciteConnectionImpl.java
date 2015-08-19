@@ -276,6 +276,11 @@ abstract class CalciteConnectionImpl
     for (Ord<TypedValue> o : Ord.zip(parameterValues)) {
       map.put("?" + o.i, o.e.toLocal());
     }
+
+    if (statement instanceof CalciteStatement) {
+      map.put("COOPERATIVE_EXEC_POLICY", ((CalciteStatement) statement).getCooperativePolicy());
+    }
+
     map.putAll(signature.internalParameters);
     final DataContext dataContext = createDataContext(map);
     return signature.enumerable(dataContext);

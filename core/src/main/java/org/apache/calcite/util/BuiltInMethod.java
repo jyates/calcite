@@ -24,6 +24,7 @@ import org.apache.calcite.avatica.util.TimeUnitRange;
 import org.apache.calcite.interpreter.Context;
 import org.apache.calcite.interpreter.Row;
 import org.apache.calcite.interpreter.Scalar;
+import org.apache.calcite.jdbc.cooperative.CooperativePolicyFactory;
 import org.apache.calcite.linq4j.AbstractEnumerable;
 import org.apache.calcite.linq4j.CorrelateJoinType;
 import org.apache.calcite.linq4j.Enumerable;
@@ -340,7 +341,9 @@ public enum BuiltInMethod {
   CONTEXT_ROOT(Context.class, "root", true),
   DATA_CONTEXT_GET_QUERY_PROVIDER(DataContext.class, "getQueryProvider"),
   PREDICATES(Predicates.class, "getPredicates"),
-  METADATA_REL(Metadata.class, "rel");
+  METADATA_REL(Metadata.class, "rel"),
+  COOPERATIVE_POLICY_APPLY(CooperativePolicyFactory.class, "applyPolicy",
+    DataContext.class, Enumerator.class);
 
   public final Method method;
   public final Constructor constructor;

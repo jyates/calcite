@@ -19,6 +19,8 @@ package org.apache.calcite.jdbc;
 import org.apache.calcite.avatica.AvaticaResultSet;
 import org.apache.calcite.avatica.AvaticaStatement;
 import org.apache.calcite.avatica.Meta;
+import org.apache.calcite.jdbc.cooperative.CooperativeIterationPolicy;
+import org.apache.calcite.jdbc.cooperative.NoOpCooperativeIteration;
 import org.apache.calcite.linq4j.Queryable;
 import org.apache.calcite.server.CalciteServerStatement;
 
@@ -29,6 +31,9 @@ import java.sql.SQLException;
  * for the Calcite engine.
  */
 public abstract class CalciteStatement extends AvaticaStatement {
+
+  protected CooperativeIterationPolicy cooperativePolicy = NoOpCooperativeIteration.IMPL;
+
   /**
    * Creates a CalciteStatement.
    *
@@ -39,9 +44,11 @@ public abstract class CalciteStatement extends AvaticaStatement {
    * @param resultSetHoldability Result set holdability
    */
   CalciteStatement(CalciteConnectionImpl connection, Meta.StatementHandle h,
-      int resultSetType, int resultSetConcurrency, int resultSetHoldability) {
+      int resultSetType, int resultSetConcurrency, int resultSetHoldability,
+    CooperativeIterationPolicy cooperativePolicy) {
     super(connection, h, resultSetType, resultSetConcurrency,
         resultSetHoldability);
+    this.cooperativePolicy = cooperativePolicy;
   }
 
   // implement Statement
@@ -87,6 +94,10 @@ public abstract class CalciteStatement extends AvaticaStatement {
       // converted to SQLException), but this statement still gets closed.
       connection1.getDriver().handler.onStatementClose(this);
     }
+  }
+
+  public CooperativeIterationPolicy getCooperativePolicy() {
+    return cooperativePolicy;
   }
 }
 

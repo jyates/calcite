@@ -44,14 +44,19 @@ import com.google.common.collect.Iterables;
 import org.junit.Ignore;
 import org.junit.Test;
 
+import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
+import java.sql.Statement;
 import java.util.Iterator;
 import java.util.Map;
+import java.util.concurrent.CountDownLatch;
 
 import static org.hamcrest.CoreMatchers.equalTo;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertThat;
+import static org.junit.Assert.assertTrue;
 
 /**
  * Tests for streaming queries.
@@ -90,14 +95,14 @@ public class StreamTest {
         .withDefaultSchema("STREAMS")
         .query("select stream * from orders")
         .convertContains("LogicalDelta\n"
-            + "  LogicalProject(ROWTIME=[$0], ID=[$1], PRODUCT=[$2], UNITS=[$3])\n"
-            + "    LogicalTableScan(table=[[STREAMS, ORDERS]])\n")
+                         + "  LogicalProject(ROWTIME=[$0], ID=[$1], PRODUCT=[$2], UNITS=[$3])\n"
+                         + "    LogicalTableScan(table=[[STREAMS, ORDERS]])\n")
         .explainContains("EnumerableInterpreter\n"
-            + "  BindableTableScan(table=[[]])")
+                         + "  BindableTableScan(table=[[]])")
         .returns(
-            startsWith(
-                "ROWTIME=2015-02-15 10:15:00; ID=1; PRODUCT=paint; UNITS=10",
-                "ROWTIME=2015-02-15 10:24:15; ID=2; PRODUCT=paper; UNITS=5"));
+          startsWith(
+            "ROWTIME=2015-02-15 10:15:00; ID=1; PRODUCT=paint; UNITS=10",
+            "ROWTIME=2015-02-15 10:24:15; ID=2; PRODUCT=paper; UNITS=5"));
   }
 
   @Test public void testStreamFilterProject() {
@@ -105,64 +110,68 @@ public class StreamTest {
         .withDefaultSchema("STREAMS")
         .query("select stream product from orders where units > 6")
         .convertContains(
-            "LogicalDelta\n"
-                + "  LogicalProject(PRODUCT=[$2])\n"
-                + "    LogicalFilter(condition=[>($3, 6)])\n"
-                + "      LogicalTableScan(table=[[STREAMS, ORDERS]])\n")
+          "LogicalDelta\n"
+          + "  LogicalProject(PRODUCT=[$2])\n"
+          + "    LogicalFilter(condition=[>($3, 6)])\n"
+          + "      LogicalTableScan(table=[[STREAMS, ORDERS]])\n")
         .explainContains(
-            "EnumerableCalc(expr#0..3=[{inputs}], expr#4=[6], expr#5=[>($t3, $t4)], PRODUCT=[$t2], $condition=[$t5])\n"
-                + "  EnumerableInterpreter\n"
-                + "    BindableTableScan(table=[[]])")
+          "EnumerableCalc(expr#0..3=[{inputs}], expr#4=[6], expr#5=[>($t3, $t4)], PRODUCT=[$t2], "
+          + "$condition=[$t5])\n"
+          + "  EnumerableInterpreter\n"
+          + "    BindableTableScan(table=[[]])")
         .returns(
-            startsWith("PRODUCT=paint",
-                "PRODUCT=brush"));
+          startsWith("PRODUCT=paint",
+            "PRODUCT=brush"));
   }
 
   @Test public void testStreamGroupByHaving() {
     CalciteAssert.model(STREAM_MODEL)
         .withDefaultSchema("STREAMS")
         .query("select stream floor(rowtime to hour) as rowtime,\n"
-            + "  product, count(*) as c\n"
-            + "from orders\n"
-            + "group by floor(rowtime to hour), product\n"
-            + "having count(*) > 1")
+               + "  product, count(*) as c\n"
+               + "from orders\n"
+               + "group by floor(rowtime to hour), product\n"
+               + "having count(*) > 1")
         .convertContains(
-            "LogicalDelta\n"
-                + "  LogicalFilter(condition=[>($2, 1)])\n"
-                + "    LogicalAggregate(group=[{0, 1}], C=[COUNT()])\n"
-                + "      LogicalProject(ROWTIME=[FLOOR($0, FLAG(HOUR))], PRODUCT=[$2])\n"
-                + "        LogicalTableScan(table=[[STREAMS, ORDERS]])\n")
+          "LogicalDelta\n"
+          + "  LogicalFilter(condition=[>($2, 1)])\n"
+          + "    LogicalAggregate(group=[{0, 1}], C=[COUNT()])\n"
+          + "      LogicalProject(ROWTIME=[FLOOR($0, FLAG(HOUR))], PRODUCT=[$2])\n"
+          + "        LogicalTableScan(table=[[STREAMS, ORDERS]])\n")
         .explainContains(
-            "EnumerableCalc(expr#0..2=[{inputs}], expr#3=[1], expr#4=[>($t2, $t3)], proj#0..2=[{exprs}], $condition=[$t4])\n"
-                + "  EnumerableAggregate(group=[{0, 1}], C=[COUNT()])\n"
-                + "    EnumerableCalc(expr#0..3=[{inputs}], expr#4=[FLAG(HOUR)], expr#5=[FLOOR($t0, $t4)], ROWTIME=[$t5], PRODUCT=[$t2])\n"
-                + "      EnumerableInterpreter\n"
-                + "        BindableTableScan(table=[[]])")
+          "EnumerableCalc(expr#0..2=[{inputs}], expr#3=[1], expr#4=[>($t2, $t3)], "
+          + "proj#0..2=[{exprs}], $condition=[$t4])\n"
+          + "  EnumerableAggregate(group=[{0, 1}], C=[COUNT()])\n"
+          + "    EnumerableCalc(expr#0..3=[{inputs}], expr#4=[FLAG(HOUR)], expr#5=[FLOOR($t0, "
+          + "$t4)], ROWTIME=[$t5], PRODUCT=[$t2])\n"
+          + "      EnumerableInterpreter\n"
+          + "        BindableTableScan(table=[[]])")
         .returns(
-            startsWith("ROWTIME=2015-02-15 10:00:00; PRODUCT=paint; C=2"));
+          startsWith("ROWTIME=2015-02-15 10:00:00; PRODUCT=paint; C=2"));
   }
 
   @Test public void testStreamOrderBy() {
     CalciteAssert.model(STREAM_MODEL)
         .withDefaultSchema("STREAMS")
         .query("select stream floor(rowtime to hour) as rowtime,\n"
-            + "  product, units\n"
-            + "from orders\n"
-            + "order by floor(orders.rowtime to hour), product desc")
+               + "  product, units\n"
+               + "from orders\n"
+               + "order by floor(orders.rowtime to hour), product desc")
         .convertContains(
-            "LogicalDelta\n"
-                + "  LogicalSort(sort0=[$0], sort1=[$1], dir0=[ASC], dir1=[DESC])\n"
-                + "    LogicalProject(ROWTIME=[FLOOR($0, FLAG(HOUR))], PRODUCT=[$2], UNITS=[$3])\n"
-                + "      LogicalTableScan(table=[[STREAMS, ORDERS]])\n")
+          "LogicalDelta\n"
+          + "  LogicalSort(sort0=[$0], sort1=[$1], dir0=[ASC], dir1=[DESC])\n"
+          + "    LogicalProject(ROWTIME=[FLOOR($0, FLAG(HOUR))], PRODUCT=[$2], UNITS=[$3])\n"
+          + "      LogicalTableScan(table=[[STREAMS, ORDERS]])\n")
         .explainContains(
-            "EnumerableSort(sort0=[$0], sort1=[$1], dir0=[ASC], dir1=[DESC])\n"
-                + "  EnumerableCalc(expr#0..3=[{inputs}], expr#4=[FLAG(HOUR)], expr#5=[FLOOR($t0, $t4)], ROWTIME=[$t5], PRODUCT=[$t2], UNITS=[$t3])\n"
-                + "    EnumerableInterpreter\n"
-                + "      BindableTableScan(table=[[]])")
+          "EnumerableSort(sort0=[$0], sort1=[$1], dir0=[ASC], dir1=[DESC])\n"
+          + "  EnumerableCalc(expr#0..3=[{inputs}], expr#4=[FLAG(HOUR)], expr#5=[FLOOR($t0, $t4)"
+          + "], ROWTIME=[$t5], PRODUCT=[$t2], UNITS=[$t3])\n"
+          + "    EnumerableInterpreter\n"
+          + "      BindableTableScan(table=[[]])")
         .returns(
-            startsWith("ROWTIME=2015-02-15 10:00:00; PRODUCT=paper; UNITS=5",
-                "ROWTIME=2015-02-15 10:00:00; PRODUCT=paint; UNITS=10",
-                "ROWTIME=2015-02-15 10:00:00; PRODUCT=paint; UNITS=3"));
+          startsWith("ROWTIME=2015-02-15 10:00:00; PRODUCT=paper; UNITS=5",
+            "ROWTIME=2015-02-15 10:00:00; PRODUCT=paint; UNITS=10",
+            "ROWTIME=2015-02-15 10:00:00; PRODUCT=paint; UNITS=3"));
   }
 
   @Ignore
@@ -170,31 +179,32 @@ public class StreamTest {
     CalciteAssert.model(STREAM_MODEL)
         .withDefaultSchema("STREAMS")
         .query("select stream *\n"
-            + "from (\n"
-            + "  select rowtime, product\n"
-            + "  from orders\n"
-            + "  union all\n"
-            + "  select rowtime, product\n"
-            + "  from orders)\n"
-            + "order by rowtime\n")
+               + "from (\n"
+               + "  select rowtime, product\n"
+               + "  from orders\n"
+               + "  union all\n"
+               + "  select rowtime, product\n"
+               + "  from orders)\n"
+               + "order by rowtime\n")
         .convertContains(
-            "LogicalDelta\n"
-                + "  LogicalSort(sort0=[$0], dir0=[ASC])\n"
-                + "    LogicalProject(ROWTIME=[$0], PRODUCT=[$1])\n"
-                + "      LogicalUnion(all=[true])\n"
-                + "        LogicalProject(ROWTIME=[$0], PRODUCT=[$2])\n"
-                + "          EnumerableTableScan(table=[[STREAMS, ORDERS]])\n"
-                + "        LogicalProject(ROWTIME=[$0], PRODUCT=[$2])\n"
-                + "          EnumerableTableScan(table=[[STREAMS, ORDERS]])\n")
+          "LogicalDelta\n"
+          + "  LogicalSort(sort0=[$0], dir0=[ASC])\n"
+          + "    LogicalProject(ROWTIME=[$0], PRODUCT=[$1])\n"
+          + "      LogicalUnion(all=[true])\n"
+          + "        LogicalProject(ROWTIME=[$0], PRODUCT=[$2])\n"
+          + "          EnumerableTableScan(table=[[STREAMS, ORDERS]])\n"
+          + "        LogicalProject(ROWTIME=[$0], PRODUCT=[$2])\n"
+          + "          EnumerableTableScan(table=[[STREAMS, ORDERS]])\n")
         .explainContains(
-            "EnumerableSort(sort0=[$0], sort1=[$1], dir0=[ASC], dir1=[DESC])\n"
-                + "  EnumerableCalc(expr#0..3=[{inputs}], expr#4=[FLAG(HOUR)], expr#5=[FLOOR($t0, $t4)], ROWTIME=[$t5], PRODUCT=[$t2], UNITS=[$t3])\n"
-                + "    EnumerableInterpreter\n"
-                + "      BindableTableScan(table=[[]])")
+          "EnumerableSort(sort0=[$0], sort1=[$1], dir0=[ASC], dir1=[DESC])\n"
+          + "  EnumerableCalc(expr#0..3=[{inputs}], expr#4=[FLAG(HOUR)], expr#5=[FLOOR($t0, $t4)"
+          + "], ROWTIME=[$t5], PRODUCT=[$t2], UNITS=[$t3])\n"
+          + "    EnumerableInterpreter\n"
+          + "      BindableTableScan(table=[[]])")
         .returns(
-            startsWith("ROWTIME=2015-02-15 10:00:00; PRODUCT=paper; UNITS=5",
-                "ROWTIME=2015-02-15 10:00:00; PRODUCT=paint; UNITS=10",
-                "ROWTIME=2015-02-15 10:00:00; PRODUCT=paint; UNITS=3"));
+          startsWith("ROWTIME=2015-02-15 10:00:00; PRODUCT=paper; UNITS=5",
+            "ROWTIME=2015-02-15 10:00:00; PRODUCT=paint; UNITS=10",
+            "ROWTIME=2015-02-15 10:00:00; PRODUCT=paint; UNITS=3"));
   }
 
   /**
@@ -208,8 +218,53 @@ public class StreamTest {
         .query("select stream * from orders")
         .limit(100)
         .explainContains("EnumerableInterpreter\n"
-            + "  BindableTableScan(table=[[]])")
+                         + "  BindableTableScan(table=[[]])")
         .returnsCount(100);
+  }
+
+  @Test(timeout = 10000)
+  public void noIteratorCreated() throws Exception {
+    testInfiniteStreamsCanStopWhenNoMatch("select stream * from orders where PRODUCT LIKE "
+                                          + "'hello'");
+  }
+
+  @Test(timeout = 10000)
+  public void noCursorCreated() throws Exception {
+    testInfiniteStreamsCanStopWhenNoMatch("select stream PRODUCT from orders where PRODUCT LIKE "
+                                          + "'hello'");
+  }
+
+  private void testInfiniteStreamsCanStopWhenNoMatch(final String sql) throws Exception {
+    Connection conn = CalciteAssert.model(STREAM_MODEL)
+                                   .withDefaultSchema(INFINITE_STREAM_SCHEMA_NAME).connect();
+    final Statement stmt = conn.createStatement();
+    // create a latch we use later to ensure that no rows have been created yet
+    final CountDownLatch countedRows = new CountDownLatch(10);
+    InfiniteOrdersTable.counter = countedRows;
+    final Exception[] exceptions = new Exception[1];
+    // this will block forever, since nothing matches, so we start in another thread
+    Thread t = new Thread() {
+      @Override
+      public void run() {
+        try {
+          stmt.executeQuery(sql);
+        } catch (SQLException e) {
+          exceptions[0] = e;
+        }
+      }
+    };
+    // start the thread and wait for some rows to be produced
+    t.start();
+    countedRows.await();
+    // close the statement, after which we should see a closed check in a few rows
+    stmt.close();
+    // and then the statement will complete and the thread will be done
+    t.join();
+
+    // make sure we didn't stop because of an exception
+    assertNotNull(exceptions[0]);
+    assertTrue("Exception didn't match expected reason. Actual: " + exceptions[0], exceptions[0]
+      .getMessage().contains("Statement closed while loading result set"));
   }
 
   private Function<ResultSet, Void> startsWith(String... rows) {
@@ -338,6 +393,7 @@ public class StreamTest {
    * Table representing an infinitely larger ORDERS stream.
    */
   public static class InfiniteOrdersTable extends BaseOrderStreamTable {
+    public static CountDownLatch counter;
     public Enumerable<Object[]> scan(DataContext root) {
       return Linq4j.asEnumerable(new Iterable<Object[]>() {
         @Override public Iterator<Object[]> iterator() {
@@ -347,6 +403,9 @@ public class StreamTest {
             }
 
             public Object[] next() {
+              if (counter != null) {
+                counter.countDown();
+              }
               return ROW_GENERATOR.apply();
             }
 

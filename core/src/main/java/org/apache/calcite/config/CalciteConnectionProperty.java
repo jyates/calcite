@@ -79,7 +79,13 @@ public enum CalciteConnectionProperty implements ConnectionProperty {
   /** Type system. The name of a class that implements
    * {@link org.apache.calcite.rel.type.RelDataTypeSystem} and has a public
    * default constructor or an {@code INSTANCE} constant. */
-  TYPE_SYSTEM("typeSystem", Type.PLUGIN, null, false);
+  TYPE_SYSTEM("typeSystem", Type.PLUGIN, null, false),
+
+  /**
+   * The cooperative policy to be used by the statement and the underlying iterator to pass
+   * status information.
+   */
+  COOPERATIVE_POLICY("cooperativePolicy", Type.STRING, "RowCount", false);
 
   private final String camelName;
   private final Type type;
