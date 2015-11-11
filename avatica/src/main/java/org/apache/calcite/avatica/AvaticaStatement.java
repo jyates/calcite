@@ -140,8 +140,12 @@ public abstract class AvaticaStatement
         }
       }
     } catch (RuntimeException e) {
-      throw connection.helper.createException("Error while executing SQL \"" + sql + "\": "
-          + e.getMessage(), e);
+      String prefix = "E";
+      if (this.isClosed()) {
+        prefix = "Statement closed and got an e";
+      }
+      throw connection.helper.createException(prefix + "rror while executing SQL \"" + sql + "\": "
+                                              + e.getMessage(), e);
     }
 
     throw new RuntimeException("Failed to successfully execute query after "
