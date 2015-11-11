@@ -18,7 +18,9 @@ package org.apache.calcite.jdbc.cooperative;
 
 import org.apache.calcite.avatica.AvaticaStatement;
 import org.apache.calcite.config.CalciteConnectionConfig;
+import org.apache.calcite.linq4j.AbstractEnumerable;
 import org.apache.calcite.linq4j.DelegatingEnumerator;
+import org.apache.calcite.linq4j.Enumerable;
 import org.apache.calcite.linq4j.Enumerator;
 
 import com.google.common.base.Function;
@@ -58,23 +60,29 @@ public class RowCountCooperativeIteration implements CooperativeIterationPolicy 
   }
 
   @Override
-  public <T> Enumerator<T> apply(final Enumerator<T> source) {
-    return new DelegatingEnumerator<T>(source) {
-      private int currentCount = 0;
-
+  public <T> Enumerable<T> apply(final Enumerable<T> source) {
+    return new AbstractEnumerable<T>() {
       @Override
-      public boolean moveNext() {
-        if (currentCount++ > count) {
-          currentCount = 0;
-          try {
-            if (stmt.isClosed()) {
-              return false;
+      public Enumerator<T> enumerator() {
+        return new DelegatingEnumerator<T>(source.enumerator()) {
+          private int currentCount = 0;
+
+          @Override
+          public boolean moveNext() {
+            if (currentCount++ > count) {
+              currentCount = 0;
+              try {
+                if (stmt.isClosed()) {
+                  return false;
+                }
+              } catch (SQLException e) {
+                throw new RuntimeException("Unexpected exception when checking statement state!",
+                  e);
+              }
             }
-          } catch (SQLException e) {
-            throw new RuntimeException("Unexpected exception when checking statement state!", e);
+            return delegate.moveNext();
           }
-        }
-        return source.moveNext();
+        };
       }
     };
   }

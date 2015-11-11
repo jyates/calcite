@@ -116,33 +116,27 @@ public class EnumerableCalc extends Calc implements EnumerableRel {
 
     final Result result =
         implementor.visitChild(this, 0, child, pref);
-    // final Enumerable<Employee> inputEnumerable = <<child adapter>>;
-    final Expression interpreter = builder.append("interpreter", result.block, false);
-    // wrap the enumerator with the cooperative policy
+
     final PhysType physType =
-      PhysTypeImpl.of(
-        typeFactory, getRowType(), pref.prefer(result.format));
+        PhysTypeImpl.of(
+            typeFactory, getRowType(), pref.prefer(result.format));
+
+    // final Enumerable<Employee> inputEnumerable = <<child adapter>>;
+    // return new Enumerable<IntString>() {
+    //     Enumerator<IntString> enumerator() {
+    //         return new Enumerator<IntString>() {
+    //             public void reset() {
+    // ...
     Type outputJavaType = physType.getJavaRowType();
     final Type enumeratorType =
-      Types.of(
-        Enumerator.class, outputJavaType);
+        Types.of(
+            Enumerator.class, outputJavaType);
     Type inputJavaType = result.physType.getJavaRowType();
-    // these parameters actually gets 'initialized' lower down when we declare the members in
-    // the new enumerator class
-    ParameterExpression baseEnumerator =
-      Expressions.parameter(
-        Types.of(
-          Enumerator.class, inputJavaType),
-        "baseEnumerator");
     ParameterExpression inputEnumerator =
-      Expressions.parameter(
-        Types.of(
-          Enumerator.class, inputJavaType),
-        "inputEnumerator");
-    Expression wrapBaseEnumerator =
-      Expressions.call(BuiltInMethod.COOPERATIVE_POLICY_APPLY.method, DataContext.ROOT,
-        baseEnumerator);
-
+        Expressions.parameter(
+            Types.of(
+                Enumerator.class, inputJavaType),
+            "inputEnumerator");
     Expression input =
         RexToLixTranslator.convert(
             Expressions.call(
@@ -203,21 +197,21 @@ public class EnumerableCalc extends Calc implements EnumerableRel {
     BlockStatement currentBody =
         builder3.toBlock();
 
+    final Expression inputEnumerable =
+        builder.append(
+            "inputEnumerable", result.block, false);
     final Expression body =
         Expressions.new_(
             enumeratorType,
             NO_EXPRS,
             Expressions.<MemberDeclaration>list(
                 Expressions.fieldDecl(
-                  Modifier.PUBLIC | Modifier.FINAL,
-                  baseEnumerator,
-                  Expressions.call(
-                    interpreter,
-                    BuiltInMethod.ENUMERABLE_ENUMERATOR.method)),
-                Expressions.fieldDecl(
-                  Modifier.PUBLIC | Modifier.FINAL,
-                  inputEnumerator,
-                  wrapBaseEnumerator),
+                    Modifier.PUBLIC
+                    | Modifier.FINAL,
+                    inputEnumerator,
+                    Expressions.call(
+                        inputEnumerable,
+                        BuiltInMethod.ENUMERABLE_ENUMERATOR.method)),
                 EnumUtils.overridingMethodDecl(
                     BuiltInMethod.ENUMERATOR_RESET.method,
                     NO_PARAMS,
@@ -237,13 +231,13 @@ public class EnumerableCalc extends Calc implements EnumerableRel {
                             inputEnumerator,
                             BuiltInMethod.ENUMERATOR_CLOSE.method))),
                 Expressions.methodDecl(
-                  Modifier.PUBLIC,
-                  BRIDGE_METHODS
-                  ? Object.class
-                  : outputJavaType,
-                  "current",
-                  NO_PARAMS,
-                  currentBody)));
+                    Modifier.PUBLIC,
+                    BRIDGE_METHODS
+                        ? Object.class
+                        : outputJavaType,
+                    "current",
+                    NO_PARAMS,
+                    currentBody)));
     builder.add(
         Expressions.return_(
             null,

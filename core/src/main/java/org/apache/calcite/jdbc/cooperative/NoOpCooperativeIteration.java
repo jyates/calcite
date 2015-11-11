@@ -18,7 +18,7 @@ package org.apache.calcite.jdbc.cooperative;
 
 import org.apache.calcite.avatica.AvaticaStatement;
 import org.apache.calcite.config.CalciteConnectionConfig;
-import org.apache.calcite.linq4j.Enumerator;
+import org.apache.calcite.linq4j.Enumerable;
 
 import com.google.common.base.Function;
 
@@ -41,7 +41,7 @@ public class NoOpCooperativeIteration implements CooperativeIterationPolicy {
     };
 
   @Override
-  public <T> Enumerator<T> apply(Enumerator<T> source) {
+  public <T> Enumerable<T> apply(Enumerable<T> source) {
     return source;
   }
 

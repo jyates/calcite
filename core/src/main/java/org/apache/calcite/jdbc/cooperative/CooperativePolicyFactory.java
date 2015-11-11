@@ -19,7 +19,10 @@ package org.apache.calcite.jdbc.cooperative;
 import org.apache.calcite.DataContext;
 import org.apache.calcite.config.CalciteConnectionConfig;
 import org.apache.calcite.jdbc.CalciteConnection;
-import org.apache.calcite.linq4j.Enumerator;
+import org.apache.calcite.linq4j.Enumerable;
+import org.apache.calcite.linq4j.tree.Expression;
+import org.apache.calcite.linq4j.tree.Expressions;
+import org.apache.calcite.util.BuiltInMethod;
 
 import com.google.common.base.Function;
 
@@ -54,7 +57,8 @@ public class CooperativePolicyFactory {
     return builder.builder.apply(connection.config());
   }
 
-  public static <T> Enumerator<T> applyPolicy(DataContext context, Enumerator<T> delegate) {
+  // Used by the apply policy method when you wrap the base expression
+  public static <T> Enumerable<T> applyPolicy(DataContext context, Enumerable<T> delegate) {
     CooperativeIterationPolicy policy =
       (CooperativeIterationPolicy) context.get("COOPERATIVE_EXEC_POLICY");
     // this happens when we have a simple context, like when doing an explain plan
@@ -62,5 +66,10 @@ public class CooperativePolicyFactory {
       policy = NoOpCooperativeIteration.IMPL;
     }
     return policy.apply(delegate);
+  }
+
+  public static Expression wrapBaseExpression(Expression baseEnumerable) {
+    return Expressions.call(BuiltInMethod.COOPERATIVE_POLICY_APPLY.method, DataContext.ROOT,
+      baseEnumerable);
   }
 }

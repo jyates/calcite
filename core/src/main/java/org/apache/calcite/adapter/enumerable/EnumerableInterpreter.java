@@ -18,6 +18,7 @@ package org.apache.calcite.adapter.enumerable;
 
 import org.apache.calcite.adapter.java.JavaTypeFactory;
 import org.apache.calcite.interpreter.Interpreter;
+import org.apache.calcite.jdbc.cooperative.CooperativePolicyFactory;
 import org.apache.calcite.linq4j.tree.BlockBuilder;
 import org.apache.calcite.linq4j.tree.Expression;
 import org.apache.calcite.linq4j.tree.Expressions;
@@ -94,7 +95,8 @@ public class EnumerableInterpreter extends SingleRel
         getRowType().getFieldCount() == 1
             ? Expressions.call(BuiltInMethod.SLICE0.method, interpreter_)
             : interpreter_;
-    builder.add(sliced_);
+    final Expression cooperative = CooperativePolicyFactory.wrapBaseExpression(sliced_);
+    builder.add(cooperative);
     return implementor.result(physType, builder.toBlock());
   }
 }

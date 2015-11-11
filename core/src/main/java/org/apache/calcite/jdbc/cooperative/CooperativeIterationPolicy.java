@@ -17,7 +17,7 @@
 package org.apache.calcite.jdbc.cooperative;
 
 import org.apache.calcite.avatica.AvaticaStatement;
-import org.apache.calcite.linq4j.Enumerator;
+import org.apache.calcite.linq4j.Enumerable;
 
 /**
  * Policy to manage how the enumeration of rows should iteract with the calling statement. Use an
@@ -27,7 +27,7 @@ import org.apache.calcite.linq4j.Enumerator;
  */
 public interface CooperativeIterationPolicy {
 
-  <T> Enumerator<T> apply(Enumerator<T> source);
+  <T> Enumerable<T> apply(Enumerable<T> source);
 
   void setStatement(AvaticaStatement statement);
 }

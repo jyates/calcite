@@ -343,7 +343,7 @@ public enum BuiltInMethod {
   PREDICATES(Predicates.class, "getPredicates"),
   METADATA_REL(Metadata.class, "rel"),
   COOPERATIVE_POLICY_APPLY(CooperativePolicyFactory.class, "applyPolicy",
-    DataContext.class, Enumerator.class);
+    DataContext.class, Enumerable.class);
 
   public final Method method;
   public final Constructor constructor;
