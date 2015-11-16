@@ -16,7 +16,6 @@
  */
 package org.apache.calcite.jdbc.cooperative;
 
-import org.apache.calcite.avatica.AvaticaStatement;
 import org.apache.calcite.config.CalciteConnectionConfig;
 import org.apache.calcite.linq4j.AbstractEnumerable;
 import org.apache.calcite.linq4j.DelegatingEnumerator;
@@ -33,7 +32,7 @@ import javax.annotation.Nullable;
  * A cooperative policy that just checks the state every <tt>n</tt> rows, where <tt>n</tt> is
  * configurable
  */
-public class RowCountCooperativeIteration implements CooperativeIterationPolicy {
+public class RowCountCooperativeIteration extends BaseCooperativeIterationPolicy {
 
   public static final Function<CalciteConnectionConfig, CooperativeIterationPolicy> BUILDER =
     new Function<CalciteConnectionConfig, CooperativeIterationPolicy>() {
@@ -48,15 +47,9 @@ public class RowCountCooperativeIteration implements CooperativeIterationPolicy 
     };
 
   private final int count;
-  private AvaticaStatement stmt;
 
   public RowCountCooperativeIteration(int count) {
     this.count = count;
-  }
-
-  @Override
-  public void setStatement(AvaticaStatement stmt) {
-    this.stmt = stmt;
   }
 
   @Override

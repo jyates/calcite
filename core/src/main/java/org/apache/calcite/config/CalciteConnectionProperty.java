@@ -85,7 +85,7 @@ public enum CalciteConnectionProperty implements ConnectionProperty {
    * The cooperative policy to be used by the statement and the underlying iterator to pass
    * status information.
    */
-  COOPERATIVE_POLICY("cooperativePolicy", Type.STRING, "RowCount", false);
+  COOPERATIVE_POLICY("cooperativePolicy", Type.STRING, "Timer", false);
 
   private final String camelName;
   private final Type type;

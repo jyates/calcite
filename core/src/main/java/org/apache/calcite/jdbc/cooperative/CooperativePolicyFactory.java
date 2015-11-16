@@ -38,23 +38,36 @@ public class CooperativePolicyFactory {
    */
   enum CooperativePolicy {
     NoOp(NoOpCooperativeIteration.BUILDER),
-    RowCount(RowCountCooperativeIteration.BUILDER);
+    RowCount(RowCountCooperativeIteration.BUILDER),
+    Timer(TimerBasedCooperativeIteration.BUILDER),
+    AND(AndCooperativeIterationPolicy.BUILDER);
 
     private final Function<CalciteConnectionConfig, CooperativeIterationPolicy> builder;
 
     CooperativePolicy(Function<CalciteConnectionConfig, CooperativeIterationPolicy> builder) {
       this.builder = builder;
     }
+
+    public static CooperativePolicy getPolicy(String type) {
+      if (type.startsWith("AND")) {
+        return AND;
+      }
+      return CooperativePolicy.valueOf(type);
+    }
+
+    public CooperativeIterationPolicy build(CalciteConnectionConfig conn) {
+      return builder.apply(conn);
+    }
   }
 
   public CooperativeIterationPolicy createPolicy(CalciteConnection connection) {
     String policyName = connection.config().cooperativePolicy();
-    CooperativePolicy builder = CooperativePolicy.valueOf(policyName);
+    CooperativePolicy builder = CooperativePolicy.getPolicy(policyName);
     if (builder == null) {
       builder = DEFAULT;
     }
 //    Preconditions.checkNotNull("No policy found for name: " + policyName);
-    return builder.builder.apply(connection.config());
+    return builder.build(connection.config());
   }
 
   // Used by the apply policy method when you wrap the base expression
